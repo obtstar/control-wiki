@@ -1,0 +1,18 @@
+schema_version: "1"
+server:
+  host: "127.0.0.1"
+  port: 8766
+  api_key: ""
+
+distill:
+  base_url: ""
+  token: ""
+  model: ""
+  api_type: ""
+  workers: 3
+
+embedding:
+  idle_timeout: "5m0s"
+
+ui:
+  language: "en"
