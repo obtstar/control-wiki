@@ -4,36 +4,35 @@
 
 > 多仓库的注册、接入、配额与权限管理见 [14 多仓库管理](14-multi-repo.md)。
 
-## 分支策略（四类分支）
+## 分支策略（业务仓：main → dev → release 只读主干，agent 只写 feature）
 
-| 分支 | 命名 | 用途 | 生命周期 |
-|-----|------|------|---------|
-| `main` | `main` | 生产主干，可发布基线 | 常驻 |
-| `dev` | `dev` | **阶段性**集成分支，按开发阶段/迭代集成验证 | 阶段结束后归档/重建 |
-| `release` | `release/{yyyymm}` | **月度升级分支，从 `main` 切出**，承接当月 feature 合并 | 月度发布合回 `main` 后归档 |
-| `feature` | `feature/{task-id}-{name}` / `bugfix/{task-id}-{name}` | 任务/缺陷分支，**从 `main` 或 `dev` 切出** | 合并后删除 |
+| 分支 | 切出关系 | 权限 | 生命周期 |
+|-----|---------|------|---------|
+| `main` | 生产主干 | **只读**（agent 与人均不直接提交） | 常驻 |
+| `dev` | 从 `main` 切出 | **只读**（仅承接 feature 合并） | 常驻/按迭代重建 |
+| `release` | 从 `dev` 切出 | **只读**（发布基线） | 发布合回后归档 |
+| `feature` | `feature/{task-id}-{name}` / `bugfix/{task-id}-{name}`，**从 `dev` 切出** | **agent 唯一可写分支** | 合并后删除 |
 
 ### 分支流转模型
 
 ```
-                 （从 main 或 dev 切出）
-feature/task-001 ─┐
-feature/task-002 ─┼──→ release/{yyyymm} ──月度──→ main
-bugfix/042 ───────┘        ▲
-                           └── dev（阶段内集成验证，可选并入）
+main ──→ dev（只读）──→ release（只读）
+           ▲                ▲
+           └── feature/TASK ─┘
+           agent 只可切 feature → 修改/测试/push → MR → 团队员工合并入 dev 或 release
 ```
 
-- **合入规则**：feature → `release/{当月}`（或阶段内先合 `dev` 集成验证）→ 月度发布时 release → `main`
-- **合并方式**：**所有合并均在 GitLab 人工执行**（平台不执行合并）；合并前由平台做**本地预处理验证**（编码/测试/Diff 汇总，见下节）
-- **回滚**：release 出问题时从 main 或上一 release 打补丁，禁止直接改 main
+- **agent 写边界**：只能切出 `feature/*` 并在其中提交；对 `main`/`dev`/`release` 无任何写权限（仓库 OpenAPI 侧配置保护分支强制生效）
+- **完成定义**：MR 被**团队其他员工**合并入 `dev` 或 `release`，Webhook 回传合并事件，任务才进入"交付"——push/MR 创建不算完成
+- **回滚**：release 出问题时从 dev 打 feature 补丁分支走同一流程，禁止直接改只读主干
 
 ## Worktree 策略
 
-- 每个任务在对应代码仓库创建独立 Worktree：`~/wt/{repo}/{task-id}-{type}-{name}`（WSL home 下）
+- 每个任务在对应代码仓库创建独立 Worktree：`~/wt/{repo}/{task-id}-{type}-{name}`
 - Worktree 与分支一一对应，checkout 到 `feature/{task-id}` 分支
 - 并发限制：同时活跃 worktree ≤ N（防资源耗尽）
 - 生命周期：任务合并完成后保留 7 天归档，然后清理
-- 主工作区 `main`/`dev` 常驻，禁止在常驻分支直接编码
+- 常驻工作区（`dev` 分支）仅用于只读检索/查看，禁止在其中编码
 
 ```
 控制中心后端 ──→ git worktree add ~/wt/repo-a/TASK-001-feature-report feature/TASK-001
@@ -42,11 +41,11 @@ bugfix/042 ───────┘        ▲
 
 ## 变更与合并流程（Code Repo 侧）
 
-1. 控制中心创建任务 → 在目标仓库创建 `feature/{task-id}` 分支（从 `main` 或 `dev` 切出）+ Worktree
+1. 控制中心创建任务 → 在目标仓库从 `dev` 切出 `feature/{task-id}` 分支 + Worktree
 2. Agent 在 Worktree 内编码、本地测试、commit
-3. push 分支 → 通过仓库 OpenAPI 创建 MR，目标为 `release/{当月}`（或阶段集成分支 `dev`）
-4. **本地预处理验证**：执行节点跑集成/回归/静态检查，报告与 Diff 汇总回传（MR 注释 + Web 端可见）
-5. **用户在 GitLab 人工合并**（平台不执行合并）→ Webhook 回传合并事件 → 控制中心记录 `work_log`、流转任务状态
+3. push 分支 → 通过仓库 OpenAPI 创建 MR，目标为 `dev`（发布窗口为 `release`）
+4. **本地预处理验证**：团队 CI 跑集成/回归/静态检查，报告与 Diff 汇总回传（MR 注释 + Web 端可见）
+5. **团队员工评审并合并**（平台不执行合并）→ Webhook 回传合并事件 → 记录 `work_log`、任务进入交付
 6. 合入后触发增量索引（Webhook）
 
 ## 执行 Agent 职责
