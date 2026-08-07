@@ -17,14 +17,18 @@
 
 **不部署**：MySQL（个人版用 SQLite，JDBC 可回切）、Ollama、LiteLLM 代理、executor 舰队。
 
-## 10.2 docker-compose（模拟综合测试环境）
+## 10.2 docker-compose（本地 docker 开发/测试环境）
 
-compose 仅用于联调测试，非生产形态。测试环境妥协项（明文占位密钥、`useSSL=false`、
-`:latest` 镜像、home 目录挂载）不得带入任何真实使用场景。
+compose 是**流水线"测试验证"阶段的执行载体**：编码完成后，在本机 docker 开发环境中
+跑集成/回归/静态检查（不依赖团队 CI，不外发代码到任何共享 runner）。
 
-- 服务：web（Nginx 静态页）、api（control-api）
+- 服务：web（Nginx 静态页）、api（control-api）、测试运行时（按业务仓 `ci/` 脚本起容器执行）
 - SQLite 内嵌于 api 数据卷（`~/data/control.db`），**无独立数据库容器**
+- 测试报告回传 control-api，驱动状态机；测试驳回打回编码阶段（pipeline.yaml）
 - `deploy/.env` 密钥为占位符（`change-me`），填好后才可 `docker compose up -d`
+
+> 资源边界：本地 docker 测试峰值 2-4C/4-8GB（Maven/vitest/Playwright），
+> 并发槽位计入任务配额，避免与编码/检索争抢本机资源。
 
 ## 10.3 executor（可选，默认不启用）
 
@@ -33,18 +37,20 @@ compose 仅用于联调测试，非生产形态。测试环境妥协项（明文
 登记启用（schema 保留：executor_id/tags/slots/token_ref，无昼夜时段策略）。
 心跳/长轮询/结果回传机制见 15 章，默认关闭不影响任何主流程。
 
-## 10.4 wiki 多人共享（唯一保留的多人能力）
+## 10.4 wiki 多人共享（PieKBS = LLM wiki 专用数据库）
 
-平台主体个人使用，但**知识库可局域网共享**：
+平台主体个人使用；**LLM wiki 的共享能力由 PieKBS 这个专用知识数据库承载**——
+它是平台唯一的知识服务出口，检索、阅读、蒸馏全经它，不另设任何 wiki 服务：
 
 ```
-PieKBS serve（本机 127.0.0.1:8766）
-  ├── 本机：pi / control-api 经 MCP 直连
-  └── 局域网他人：ssh -L 8766:localhost:8766 dev@<host>（SSH 密钥即认证，零新增认证面）
+PieKBS serve（本机 127.0.0.1:8766，知识数据库）
+  ├── 本机：pi / control-api 经 MCP 调用（kb_search / kb_page / kb_add）
+  └── 局域网团队成员：ssh -L 8766:localhost:8766 dev@<host>（SSH 密钥即认证，零新增认证面）
        或改 host: 0.0.0.0 + api_key 直接暴露（按需）
 ```
 
 只读分享（检索/阅读）；写入（raw 投放、wiki 维护）仍只在平台侧进行。
+共享内容 = control-wiki（平台级 KB）+ 项目级 KB（`~/wiki/<repo>/`，可选逐项目开放）。
 
 ## 10.5 备份（最小口径）
 

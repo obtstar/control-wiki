@@ -44,7 +44,7 @@ main ──→ dev（只读）──→ release（只读）
 1. 控制中心创建任务 → 在目标仓库从 `dev` 切出 `feature/{task-id}` 分支 + Worktree
 2. Agent 在 Worktree 内编码、本地测试、commit
 3. push 分支 → 通过仓库 OpenAPI 创建 MR，目标为 `dev`（发布窗口为 `release`）
-4. **本地预处理验证**：团队 CI 跑集成/回归/静态检查，报告与 Diff 汇总回传（MR 注释 + Web 端可见）
+4. **本地预处理验证**：本地 docker 开发环境跑集成/回归/静态检查，报告与 Diff 汇总回传（MR 注释 + Web 端可见）
 5. **团队员工评审并合并**（平台不执行合并）→ Webhook 回传合并事件 → 记录 `work_log`、任务进入交付
 6. 合入后触发增量索引（Webhook）
 
