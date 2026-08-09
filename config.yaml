@@ -5,10 +5,10 @@ server:
   api_key: ""
 
 distill:
-  base_url: ""
-  token: ""
-  model: ""
-  api_type: ""
+  base_url: "http://litellm.internal:4000/v1"
+  token: ""          # 经 PIEKBS_DISTILL_TOKEN 注入，不落盘；piekbs 要求非空，免鉴权网关可填占位值
+  model: "cheap"
+  api_type: "openai"
   workers: 3
 
 embedding:
