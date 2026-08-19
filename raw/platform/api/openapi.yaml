@@ -1,0 +1,713 @@
+# kb-mirror: upstream=control-api/docs/api/openapi.yaml sha256=1dcded4c63d93447783fd0dd3d1721b881756225ada185cbf60ec4193814d6b5 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-19T21:58:57+08:00
+openapi: 3.1.0
+info:
+  title: control-api (control-web MVP subset)
+  description: |
+    control-web 审批工作台 MVP 所需的最小 API 契约。
+    来源：TASK-002 设计产物；编码阶段复制到 control-api/docs/api/openapi.yaml。
+  version: 0.1.0-dev
+
+servers:
+  - url: /api
+    description: 通过 Vite dev proxy 转发到 control-api 127.0.0.1:8765
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      summary: 用户登录
+      description: 校验用户名/密码，返回 Bearer token 与用户信息。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 请求格式错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 用户名或密码错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks:
+    get:
+      summary: 任务列表
+      description: 返回所有任务索引，按 updated_at 倒序。
+      responses:
+        '200':
+          description: 任务列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: 创建任务
+      description: |
+        创建任务 = 在 tasks/ 下落一份 task.md（文档即任务），初始状态 pending、stage 为空。
+        任务 ID 由后端按 TASK-%03d 递增分配。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTaskResponse'
+        '400':
+          description: 请求格式错误或 title/body 缺失
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}/action:
+    post:
+      summary: 任务动作
+      description: |
+        对指定任务执行动作：approve 推进到下一阶段，reject 按 pipeline on_reject 回退，
+        pause 暂停（最高运行时权限，任何角色可触发），resume 恢复（仅人执行）。
+        reject 必须附批注；approve/reject 后端会再次校验角色权限。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionRequest'
+      responses:
+        '200':
+          description: 动作成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionResponse'
+        '400':
+          description: 请求格式错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: 当前角色无权审批该阶段
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 状态冲突（如任务不在 awaiting_approval）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /webhooks/merge-event:
+    post:
+      summary: 团队 MR 终审合并事件回传
+      description: |
+        merge 阶段（approval: team_mr_review）终审由团队员工在 Git 平台完成，
+        平台无合并按钮；合并后 Git 平台回传本 webhook，任务状态置 merged 并停留
+        待交付（FINDING-029），由人工 action=deliver 确认后推进 deliver。
+        认证独立于 Bearer 会话：请求头 X-Webhook-Token 与服务端
+        server.webhook_secret（env CONTROL_WEBHOOK_SECRET 可覆盖）常量时间比较。
+        secret 未配置时端点未启用，一律 503。
+      security:
+        - WebhookToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeEventRequest'
+      responses:
+        '200':
+          description: 合并事件已受理，状态置 merged 停留待交付（FINDING-029）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeEventResponse'
+        '400':
+          description: 请求格式错误、缺 task_id 或 event 非 merged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: X-Webhook-Token 缺失或与共享密钥不符
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: 任务不存在或不在 merge 阶段 awaiting_approval 等待态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: webhook 未启用（server.webhook_secret 未配置）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /approvals/pending:
+    get:
+      summary: 当前用户可审批列表
+      description: |
+        返回当前登录用户角色可审批的 awaiting_approval 任务。
+        admin 角色返回全部；其他角色只返回 role 匹配的记录。
+      responses:
+        '200':
+          description: 可审批列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PendingApproval'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /audit:
+    get:
+      summary: 审计日志链
+      description: 返回工作日志链，按时间倒序，默认最多 100 条。
+      responses:
+        '200':
+          description: 审计日志列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditLog'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /findings:
+    get:
+      summary: 问题一览
+      description: |
+        返回平台发现问题登记表，每次请求实时解析权威源
+        control-center/docs/FINDINGS.md 的 Markdown 表格（web 问题一览为派生视图，
+        不做缓存）。表头/分隔行与非 FINDING 开头的行被跳过。
+      responses:
+        '200':
+          description: 问题列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Finding'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 服务器内部错误（如 FINDINGS.md 读取失败）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /kb/search:
+    get:
+      summary: KB 检索
+      description: |
+        代理 PieKBS REST（GET {kb.endpoint}/api/search）的全文检索，web 为检索视图。
+        与 engine KB grounding 的 mode 门控无关：只要 kb.endpoint 非空即可用。
+        kb.endpoint 未配置（空）时 503；PieKBS 不可达、返回非 200 或响应解析失败时
+        502 并在 error 中带原因摘要。
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 检索词（去空白后非空，否则 400）
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: 返回条数上限（默认 10；非正整数时 400）
+      responses:
+        '200':
+          description: 命中列表（无命中返回空数组）
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KBHit'
+        '400':
+          description: q 为空或 limit 非法
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: KB 不可达或 PieKBS 报错/响应解析失败（error 带原因摘要）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: kb.endpoint 未配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /openapi.yaml:
+    get:
+      summary: OpenAPI 契约文件本体
+      description: |
+        自指端点：文档即实现。返回本服务实际实现的契约文件
+        docs/api/openapi.yaml 原文（text/yaml），供前端 API 文档页（Scalar）渲染。
+      responses:
+        '200':
+          description: 契约文件原文
+          content:
+            text/yaml:
+              schema:
+                type: string
+        '401':
+          description: 未认证
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: 契约文件读取失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        登录接口返回的会话 token：32 字节加密随机数的 hex 编码（64 字符），
+        不透明（非 JWT），有效期 24h。后续请求以 Authorization: Bearer <token> 发送。
+    WebhookToken:
+      type: apiKey
+      in: header
+      name: X-Webhook-Token
+      description: |
+        merge webhook 独立共享密钥（server.webhook_secret，env
+        CONTROL_WEBHOOK_SECRET 可覆盖），与 Bearer 会话无关；
+        服务端做常量时间比较，未配置时端点一律 503。
+
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 用户名
+        password:
+          type: string
+          description: 密码
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Bearer token
+        username:
+          type: string
+          description: 登录用户名
+        role:
+          type: string
+          enum: [customer, designer, tester, team, admin]
+          description: 用户角色
+      required:
+        - token
+        - username
+        - role
+
+    Task:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务 ID，如 TASK-001
+        title:
+          type: string
+          description: 任务标题
+        repo_key:
+          type: [string, "null"]
+          description: 目标仓库键
+        stage:
+          type: string
+          description: 当前阶段
+        status:
+          type: string
+          enum: [pending, running, awaiting_approval, paused, merged, delivered]
+          description: |
+            任务状态。merged 为稳定态（FINDING-029）：merge 阶段终审由团队在 Git
+            平台合并后经 POST /webhooks/merge-event 回传置位，任务停留 merged
+            （已合并待交付，看板可见），由人工经 POST /tasks/{id}/action
+            （action=deliver）确认后推进 deliver。
+        authority:
+          type: string
+          description: 文档权柄级别
+        updated_by:
+          type: [string, "null"]
+          description: 最近更新人（从 work_log 派生）
+        updated_at:
+          type: string
+          format: date-time
+          description: 最近更新时间
+        path:
+          type: string
+          readOnly: true
+          description: 任务目录绝对路径（看板索引派生字段，FINDING-039 补登记）
+      required:
+        - task_id
+        - title
+        - stage
+        - status
+        - authority
+        - updated_at
+
+    CreateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 任务标题（必填，去空白后非空）
+        repo_key:
+          type: string
+          description: |
+            目标仓库键（可选，registry/repos.yaml 中的 key）。提供时须已登记
+            且未 disabled，否则 400（FINDING-019/046，14.2）；留空表示未分配
+            仓库的草稿任务。
+        domain:
+          type: string
+          description: 领域 skill（可选，如 frontend-dev/backend-go）
+        body:
+          type: string
+          description: 需求正文（L1，人写；必填，去空白后非空）
+      required:
+        - title
+        - body
+
+    CreateTaskResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 分配的任务 ID，如 TASK-001
+        path:
+          type: string
+          description: 任务目录路径（task.md 所在目录）
+      required:
+        - task_id
+        - path
+
+    ActionRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [approve, reject, pause, resume, deliver]
+          description: |
+            任务动作。approve 批准并推进到下一阶段，reject 按 pipeline on_reject 回退（必须附批注）；
+            pause 暂停——最高运行时权限，任何角色可触发，暂停期间禁止一切写操作；
+            resume 恢复——仅人执行，恢复后按当前 stage 重新执行；
+            deliver 交付确认（FINDING-029）——仅 merge 阶段 merged 状态可触发，
+            确认后进入 deliver 阶段（auto，agent 自动走完即 delivered）。
+            advance 仅供后端内部自动流程使用，不对外暴露。
+        comment:
+          type: [string, "null"]
+          description: 批注；reject 时必填
+      required:
+        - action
+
+    ActionResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务 ID
+        stage:
+          type: string
+          description: 动作后阶段
+        status:
+          type: string
+          description: 动作后状态
+      required:
+        - task_id
+        - stage
+        - status
+
+    PendingApproval:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务 ID
+        title:
+          type: string
+          description: 任务标题
+        stage:
+          type: string
+          description: 待审批阶段
+        role:
+          type: string
+          enum: [customer, designer, tester, team, admin]
+          description: 该审批项所需角色
+        artifact:
+          type: [string, "null"]
+          description: 阶段产物摘要或路径
+        created_at:
+          type: string
+          format: date-time
+          description: 进入待审批时间
+      required:
+        - task_id
+        - title
+        - stage
+        - role
+        - created_at
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: 日志自增 ID
+        task_id:
+          type: [string, "null"]
+          description: 关联任务 ID
+        stage:
+          type: [string, "null"]
+          description: 关联阶段
+        action:
+          type: string
+          description: 动作类型
+        operator:
+          type: string
+          description: 操作人
+        model:
+          type: [string, "null"]
+          description: 使用模型
+        detail:
+          type: [string, "null"]
+          description: 详情
+        entry_hash:
+          type: string
+          description: 日志条目哈希
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+      required:
+        - id
+        - action
+        - operator
+        - entry_hash
+        - created_at
+
+    Finding:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 问题 ID，如 FINDING-001
+        date:
+          type: string
+          description: 登记日期
+        source:
+          type: string
+          description: 来源（评审/核查轮次）
+        phenomenon:
+          type: string
+          description: 现象描述
+        evidence:
+          type: string
+          description: 证据（文件:行号等，可为空串）
+        impact:
+          type: string
+          description: 影响
+        status:
+          type: string
+          enum: [open, confirmed, fixed, wontfix]
+          description: 处理状态
+        target:
+          type: string
+          description: 去向（修复提交或跟进位置，允许空串）
+      required:
+        - id
+        - date
+        - phenomenon
+        - status
+
+    MergeEventRequest:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务 ID，如 TASK-001（必填）
+        event:
+          type: string
+          enum: [merged]
+          description: 事件类型，仅支持 merged（必填）
+        detail:
+          type: [string, "null"]
+          description: 合并详情，如 "MR !123 by @teammate"
+      required:
+        - task_id
+        - event
+
+    MergeEventResponse:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: 任务 ID
+        status:
+          type: string
+          description: 受理后状态（merged，停留待人工 action=deliver 确认，FINDING-029）
+      required:
+        - task_id
+        - status
+
+    KBHit:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 文档 ID
+        path:
+          type: string
+          description: 文档路径（KB 内相对路径）
+        title:
+          type: string
+          description: 文档标题
+        layer:
+          type: string
+          description: 文档层（如 raw/wiki）
+        kind:
+          type: string
+          description: 文档类型（如 page/concept）
+        snippet:
+          type: string
+          description: 命中摘要（可缺席）
+      required:
+        - id
+        - title
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: 错误信息
+      required:
+        - error

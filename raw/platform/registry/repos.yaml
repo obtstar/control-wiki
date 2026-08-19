@@ -1,0 +1,78 @@
+# kb-mirror: upstream=control-center/registry/repos.yaml sha256=46d4ca155dc44b02e80a48fab60e51aec24d894d85434a99a96b83ec7bbcb661 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-19T21:58:57+08:00
+# 仓库注册表（14.2）：Git 即权威源
+# 双重用途：
+#   1. 环境拓扑清单 —— setup-env.sh 按本表同步全部仓库
+#      代码仓统一 bare+worktree 模型：gitdir 集中 ~/.repos/<key>.git，
+#      常驻工作区 ~/wt/<path>/（任务 worktree 同根，{task-id}-* 命名，7 天回收）
+#   2. control-api 运行时注册表 —— api_type/token_ref/max_worktrees 等字段供调度使用
+# 字段说明见 docs/architecture/14-multi-repo
+repos:
+  - repo_key: control-center       # 控制面（引导仓，普通克隆 ~/control-center，仅 pull）
+    name: 控制中心
+    path: control-center           # 相对工作用户 home（普通克隆，不走 wt）
+    git_url: git@github.com:obtstar/control-center.git
+    default_branch: dev
+    executor_allowed: false        # 不纳入任务调度
+
+  - repo_key: control-api
+    name: 平台后端
+    path: control-api                # 平台组件（顶级目录，gitdir: ~/.repos/control-api.git）
+    git_url: git@github.com:obtstar/control-api.git
+    api_type: GITHUB
+    token_ref: env:GIT_TOKEN
+    openapi_ref: openapi/openapi.yaml
+    default_branch: dev
+    max_worktrees: 3
+    executor_allowed: false  # 平台仓：根目录直接开发，不走 wt 调度
+    disabled: false
+
+  - repo_key: control-web
+    name: 平台前端
+    path: control-web
+    git_url: git@github.com:obtstar/control-web.git
+    api_type: GITHUB
+    token_ref: env:GIT_TOKEN
+    default_branch: dev
+    max_worktrees: 2
+    executor_allowed: false  # 平台仓：根目录直接开发，不走 wt 调度
+    disabled: false
+
+  - repo_key: control-db
+    name: 平台数据库 DDL
+    path: control-db
+    git_url: git@github.com:obtstar/control-db.git
+    api_type: GITHUB
+    token_ref: env:GIT_TOKEN
+    default_branch: dev
+    max_worktrees: 1
+    executor_allowed: false  # 平台仓：根目录直接开发，不走 wt 调度
+    disabled: false
+
+  - repo_key: control-piekbs
+    name: PieKBS 知识引擎源码（Agent 基础设施，非项目代码）
+    path: control-piekbs           # 顶级目录（gitdir 集中 ~/.repos/control-piekbs.git）
+    git_url: git@github.com:obtstar/control-piekbs.git
+    api_type: GITHUB
+    default_branch: dev
+    executor_allowed: false
+
+  - repo_key: control-wiki
+    name: 知识库（raw/wiki/schema）
+    path: control-wiki             # 普通克隆（KB 数据仓，由 init_piekbs 管理）
+    git_url: git@github.com:obtstar/control-wiki.git
+    api_type: GITHUB
+    default_branch: dev
+    executor_allowed: false
+
+  # 业务仓库按同 schema 登记（示例）：
+  # - repo_key: billing-core
+  #   path: wt/billing-core/dev
+  #   git_url: ssh://git@git.internal/billing/billing-core.git
+  #   api_type: GITLAB
+  #   api_endpoint: http://git.internal/api/v4
+  #   token_ref: env:GIT_TOKEN
+  #   default_branch: dev
+  #   max_worktrees: 3
+  #   executor_allowed: true
+  #   disabled: false

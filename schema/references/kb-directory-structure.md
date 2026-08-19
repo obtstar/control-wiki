@@ -55,6 +55,16 @@ piekbs-kb/
 - Put webpage snapshots under `raw/webpages/<source>/`.
 - For WeChat articles, prefer saving `.html`, extracted `.md`, and `.meta.json` together.
 
+## 平台本地约定：raw/platform/ 镜像区（本 KB 实例特有）
+
+- `raw/platform/` 是**派生镜像区**：平台权柄文档（架构/规约/契约/台账/编排/注册表/AGENTS.md）
+  由 `control-center/scripts/kb-sync.sh` 从各 Git 仓镜像生成（FINDING-051）。
+- 镜像文件首行携 `kb-mirror: upstream=<路径> sha256=<哈希>` 出处头——**勿手改镜像**
+  （改动会被下次 sync 覆盖）；要改就改 upstream 上游文件，再重跑 kb-sync.sh。
+- 镜像清单唯一来源 = `control-center/orchestration/reconcile/checks.yaml` 的
+  `mirror_pairs` 块；`control-api reconcile` 的 `kb-mirror-freshness` 检查盯新鲜度，
+  镜像过期报 WARN。新增权柄文档须在该块登记，否则不在检索面。
+
 ## Wiki Rules
 
 - Put one-source notes under `wiki/source-notes/`.

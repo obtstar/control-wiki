@@ -1,0 +1,78 @@
+# kb-mirror: upstream=control-center/orchestration/workflows/pipeline.yaml sha256=f62255c26dfaba96353ffd0e56e7cb9293e22a4f079201aef890c1d8c319233e （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-19T21:58:57+08:00
+# 流水线状态机（05 章）：每阶段一审批闸
+# 权柄与有据约束见 docs/architecture/18-authority.md
+# control-api 热加载本文件；状态流转与审批事件记 work_log（hash 链）
+authority:
+  grounding: required           # 有据可依：产出必须引用 KB 依据（文档 ID+段落）
+  on_no_basis: pause            # 检索不到依据 → 暂停并说明缺失项，禁止自行发挥（已实现：control-api engine grounding，kb.mode=enforce 时生效）
+  doc_write: downstream_only    # 顺行可写（L1→L4 当前阶段及以下），逆行禁止：
+                                # 不得修改更高级别文档，人指令也不破例
+  on_inconsistency:             # 发现上下级文档不一致（人令 AI 改也不破例）
+    action: report_and_pause    # 只产报告 + 暂停任务
+    report_fields: [inconsistency_points, root_cause, fix_suggestion, impact_scope]
+    resume_after: human_fixes_wiki   # 人按报告亲自改 wiki 后恢复，按新文档重做
+  consistency_check:            # 逐级权柄校验，冲突即暂停
+    design: L1
+    coding: L3
+  wiki_change_hook: pause_affected_tasks   # 人改权柄文档 → 暂停受影响任务
+
+pause:
+  priority: highest             # 最高运行时权限，任何状态可触发，不可覆盖
+  side_effect: stop_all_writes  # 暂停期间禁止一切写操作（代码/wiki/远端）
+  resume: human_only            # 仅人可恢复；恢复时按最新 wiki 重新校验
+
+pipeline:
+  stages:
+    - id: requirements          # 需求分析
+      model: cheap               # 模型别名（LiteLLM 路由）
+      agent: [rag_retrieve, impact_analysis]
+      artifact: 影响分析报告
+      approval: required        # required=人工审批 | auto=自动过闸
+      on_reject: retry          # 驳回必附批注，AI 带批注重做本阶段
+
+    - id: design                # 系统设计
+      model: coding
+      agent: [api_design, db_change, sequence_diagram]
+      artifact: 设计文档（control-center MR）
+      approval: required
+      on_reject: retry
+
+    - id: coding                # 编码实现
+      model: coding
+      agent: [branch_worktree, implement, unit_test]
+      artifact: commit + MR diff
+      approval: required
+      on_reject: retry
+
+    - id: testing               # 测试验证（本地 docker 开发环境执行，不接团队 CI）
+      model: cheap
+      agent: [integration_test, regression, static_check]
+      env: local_docker
+      artifact: 测试报告
+      approval: required
+      on_reject: back_to_coding # 测试不过打回编码阶段
+
+    - id: merge                 # 待合并（终审）
+      model: heavy              # heavy 自评用重模型
+      artifact: MR + heavy 模型自评报告
+      quality_gate: [tests_green, heavy_self_review]   # 进入本阶段的前置自动关
+      approval: team_mr_review  # 终审：团队员工评审合并入 dev/release，平台无合并按钮
+      done_when: merged_by_teammate   # 仅 push/建 MR 不算完成，合并事件回传才算
+      webhook: merge_event      # 已实现：POST /api/webhooks/merge-event（X-Webhook-Token 独立密钥，CONTROL_WEBHOOK_SECRET 注入）
+
+    - id: deliver               # 交付
+      approval: auto
+      agent: [cleanup_worktree, archive_report]
+
+approval:
+  interface: control-web        # 批准/驳回均在 Web 工作台（驳回必附批注）
+  cli_fallback: pi CLI 亦可审批（人工通道）
+  audit: work_log               # 记录审批人/时间/意见/前后状态哈希
+  timeout_hours: 24             # 超时未审批 → Web 通知，不自动通过
+
+circuit_breaker:                # 任务级熔断（防失控烧预算）
+  consecutive_failures: 3       # 已实现：连败计数从 work_log 派生（control-api store.ConsecutiveFailures）
+  # token_budget_per_task: 500000  # 未实现：pi --print 不回传 token 用量，待数据源可用后恢复声明
+  action: auto_pause_and_notify # 已实现：auto pause + notify 落 work_log/日志（FINDING-027，web 审计可见）
+  retry_backoff_seconds: [30, 60]  # 已实现：连败未达阈值置回 pending，RetryLoop 按此表退避自动重跑（缺省 [30,60]）
