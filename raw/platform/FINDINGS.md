@@ -1,5 +1,5 @@
-<!-- kb-mirror: upstream=control-center/docs/FINDINGS.md sha256=5673e097752f6133b310d78301a95abbb983371bcc25f2a929793547e4560819 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-synced-at: 2026-08-19T21:58:57+08:00 -->
+<!-- kb-mirror: upstream=control-center/docs/FINDINGS.md sha256=1ab8d906fffff4184ecf2461136b8af2d4fcfcc3816197c1c4c1b0c389197cf0 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+synced-at: 2026-08-21T02:00:28+08:00 -->
 
 # FINDINGS — 平台发现问题一览
 
@@ -59,7 +59,8 @@ synced-at: 2026-08-19T21:58:57+08:00 -->
 | FINDING-048 | 2026-08-18 | 任务查看（kimi） | TASK-002 frontmatter 自相矛盾（stage=coding 但 status=merged，merged 属 merge 阶段终态）；且 work_log 在 2026-08-09 pause（id 17）后无任何 resume/testing/merge 记录，状态却已到 merged | control-center/tasks/TASK-002/task.md frontmatter；control.db work_log id 18~30 全属 TASK-001 | 阶段/状态语义错位；merge 前流转脱离引擎，hash 链审计段缺失 | fixed | 本提交：frontmatter 校正 stage=merge（配合 FINDING-029 新语义，看板出现交付确认入口）；work_log 审计缺口为历史事实不回填，此后流转全走引擎 |
 | FINDING-049 | 2026-08-17 | D-2 对账首跑（reconcile） | registry/repos.yaml 各条目含 14.2 未声明字段 path，对账 WARN（首跑起 6 条） | orchestration/reconcile/checks.yaml#registry-schema；path 真实消费方 scripts/lib/repos.sh:188（dest=$BASE_HOME/$path 落盘），不可由 repo_key 推导 | 文档声明与注册表漂移，WARN 长期存在麻痹对账信号 | fixed | 2026-08-18 人裁决 A（文档追认实现）：14.2 字段清单补 path 声明 + checks.yaml allowed 同步；reconcile 四项全 PASS 零 WARN |
 | FINDING-050 | 2026-08-18 | FINDING-017 处理（kimi） | `piekbs service install` 创建的 indexer 单元执行 `piekbs watch`，但该子命令不存在（cmd/piekbs/main.go 无 case），安装即 crash-loop；Linux（piekbs-indexer）与 macOS（com.piekbs.indexer）同病 | internal/service/systemd.go:28、launchd.go:85；实测 `piekbs watch` → `fatal: unknown subcommand: watch` | 常驻服务安装路径不可用（FINDING-017 子项"未装服务"的前置阻塞） | fixed | control-piekbs d925bd3：Linux 仅装 piekbs-mcp（serve 内嵌 watcher/追平/蒸馏池），uninstall 兜底清理历史 indexer；已实测安装常驻 active、/ 与 /mcp 200；macOS launchd 侧同病未修（本机不可验证，留待上游/后续裁决） |
-| FINDING-051 | 2026-08-19 | KB 优化评估（kimi） | 平台权柄文档（17 篇架构/CONVENTIONS/FINDINGS/openapi/pipeline/registry）均不在 KB 检索面：control-wiki/raw/ 仅一份 OAS 规范，grounding 即使通网关也无据可检 | control-wiki/raw/ 实测清单；18.3 grounding 走 PieKBS 检索接口（仅覆盖 raw/+wiki/） | "有据可依"第一原则机器上不可执行，enforce 名存实亡 | open | |
+| FINDING-051 | 2026-08-19 | KB 优化评估（kimi） | 平台权柄文档（17 篇架构/CONVENTIONS/FINDINGS/openapi/pipeline/registry）均不在 KB 检索面：control-wiki/raw/ 仅一份 OAS 规范，grounding 即使通网关也无据可检 | control-wiki/raw/ 实测清单；18.3 grounding 走 PieKBS 检索接口（仅覆盖 raw/+wiki/） | "有据可依"第一原则机器上不可执行，enforce 名存实亡 | fixed | 2026-08-19 人裁决（镜像+新鲜度对账，保持唯一和一致）：control-center a3ee4af（kb-sync.sh + checks.yaml mirror_pairs 唯一清单 27 对）+ control-api e2eef9f（mirror_freshness 检查器，过期/缺失 WARN）+ control-wiki cef502e（raw/platform/ 镜像区 + schema 约定）；FTS 实测命中，reconcile 五项全 PASS |
+| FINDING-052 | 2026-08-21 | wiki-distill 演示（DSH 集成） | PurgeOrphanWikiFiles 按 stem 判据清理 wiki/source-notes/（假定 1:1 蒸馏），多页/分组蒸馏产物（stem 不匹配任何 raw 文件）被周期性误删；control-api-openapi 组页 02-04 连续被删，01-overview 因 stem 恰与 raw/platform/architecture/01-overview.md 撞名而幸存（误打误撞） | control-piekbs/internal/kb/okf.go（PurgeOrphanWikiFiles）；control-wiki/wiki/source-notes/control-api-openapi/ | wiki-distill 技能的大文档拆分规则与 purge 冲突，多页蒸馏产物会被删除；人工/分组页面同理 | fixed | control-piekbs（sources 感知存活判据：frontmatter sources 任一条目指向存在的 raw 文件即非孤儿；TestPurgeOrphanWikiFiles_SourcesAware 3 用例绿；二进制重建 + piekbs-mcp systemd 重启，5 页存活实测 + OKF 索引自动收录） |
 
 ## 已修复（留存痕）
 
@@ -71,3 +72,4 @@ synced-at: 2026-08-19T21:58:57+08:00 -->
 - 2026-08-18：裁决批——FINDING-019/046 注册表启动加载+createTask 校验（control-api b943e56，internal/registry 新包，14.2 声明转真）；FINDING-029 merged 稳定态+action=deliver 人工确认（control-api b943e56 + control-web 4b0a5ac，契约先行）；FINDING-036 pre-commit index 快照（control-center 2b48fe1，四幕实验验证）；FINDING-048 TASK-002 frontmatter 校正 stage=merge（随本提交）
 - 2026-08-18：FINDING-049 人裁决 A——14.2 字段清单补 `path` 声明 + checks.yaml allowed 同步（reconcile 四项全 PASS 零 WARN）
 - 2026-08-18：FINDING-017 部分处理——FINDING-050 修复（control-piekbs d925bd3）后 piekbs-mcp systemd 常驻并启用 linger，raw 层 FTS 检索实测可用；distill 端到端仍阻塞于 litellm.internal 网关不可达，恢复手册见 AGENTS.md §10-8
+- 2026-08-19：FINDING-051 KB 检索面——kb-sync.sh 镜像 27 对权柄文档入 raw/platform/（control-center a3ee4af + control-api e2eef9f + control-wiki cef502e），reconcile 新增 kb-mirror-freshness 全 PASS；TASK-002 交付归档随本提交

@@ -1,0 +1,11 @@
+{"ts":"2026-08-20T17:19:00Z","tool":"kb_search","query":"FINDING-043"}
+{"ts":"2026-08-20T17:20:58Z","tool":"kb_search","query":"OpenAPI 规范 3.1.0"}
+{"ts":"2026-08-20T17:25:34Z","tool":"kb_search","query":"OpenAPI 规范 webhooks operationId"}
+{"ts":"2026-08-20T17:30:58Z","tool":"kb_search","query":"OpenAPI 路径模板 v3.1.0"}
+{"ts":"2026-08-20T17:34:38Z","tool":"kb_search","query":"updatePetWithForm Encoding 对象 contentType Server Variable","related":["wiki/source-notes/control-api-openapi/01-overview.md"]}
+{"ts":"2026-08-20T17:35:14Z","tool":"kb_search","query":"OpenAPI Responses Response Callback Schema Discriminator SecurityScheme"}
+{"ts":"2026-08-20T17:43:11Z","tool":"kb_search","query":"OpenAPI Responses Response Callback Example Link Header Tag Reference 对象"}
+{"ts":"2026-08-20T17:46:39Z","tool":"kb_search","query":"Responses 对象 operationRef 运行时表达式 键表达式"}
+{"ts":"2026-08-20T17:46:48Z","tool":"kb_search","query":"键表达式 X-Rate-Limit operationRef 互斥"}
+{"ts":"2026-08-20T17:48:05Z","tool":"kb_search","query":"X-Rate-Limit-Limit operationRef 互斥 运行时表达式"}
+{"ts":"2026-08-20T17:59:34Z","tool":"kb_search","query":"OAuth Flows 授权码 运行时表达式"}

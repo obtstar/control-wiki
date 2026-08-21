@@ -1,0 +1,6 @@
+# control-api-openapi
+
+* [OpenAPI 规范 v3.1.0（OAS）— 简介、定义、版本与格式（第 1-3 节、4.1-4.7 节）](01-overview.md) — OpenAPI 规范（OAS，OpenAPI Specification）v3.1.0 中文版前半部分：简介、定义（OpenAPI 文档/路径模板/媒体类型/HTTP 状态码）、版本（major.minor.patch）、格式（JSON/YAML）、文档结构、数据类型（integer int32/int64、number float/double、string password）、富文本与相对引用规则。
+* [OpenAPI 规范 v3.1.0 — 对象定义（一）：4.8.1-4.8.15（OpenAPI 至 Encoding 对象）](02-objects-part1.md) — OpenAPI 规范（OAS）v3.1.0 对象定义前半：OpenAPI/Info/Contact/License/Server/Server Variable/Components/Paths/Path Item/Operation/External Documentation/Parameter/Request Body/Media Type/Encoding 对象的字段目录、参数位置与 style 序列化矩阵、多文件上传与 multipart 默认 Content-Type 规则。
+* [OpenAPI 规范 v3.1.0 — 对象定义（二）：4.8.16-4.8.30（Responses 至 Security Requirement）](03-objects-part2.md) — OpenAPI 规范（OAS）v3.1.0 对象定义后半：Responses/Response/Callback/Example/Link/Header/Tag/Reference/Schema/Discriminator/XML/Security Scheme/OAuth Flows/OAuth Flow/Security Requirement 对象的字段目录与约束（运行时表达式 ABNF、JSON Schema 2020-12 超集、OAS 方言模式 ID、多态 discriminator）。
+* [OpenAPI 规范 v3.1.0 — 规范扩展、安全过滤与附录（4.9-4.10、附录 A/B）](04-extensions-appendix.md) — OpenAPI 规范（OAS）v3.1.0 收尾部分：4.9 规范扩展（x- 前缀模式化字段，x-oai-/x-oas- 保留）、4.10 安全过滤（路径对象/路径项对象可空置）、附录 A 修订历史（2011-2021，Swagger 1.0 → OAS 3.1.0）、附录 B 规范性引用（RFC2119/3986/6749/6901/7230-7235、JSON Schema 2020-12 等）。
