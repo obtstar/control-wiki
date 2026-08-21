@@ -1,5 +1,5 @@
-# kb-mirror: upstream=control-center/registry/repos.yaml sha256=46d4ca155dc44b02e80a48fab60e51aec24d894d85434a99a96b83ec7bbcb661 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-# synced-at: 2026-08-19T21:58:57+08:00
+# kb-mirror: upstream=control-center/registry/repos.yaml sha256=aa2acb24188bd6e3384b8695ba38cd5491aef6bb47b794c086e3f4a632ab0bfc （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-21T09:14:55+08:00
 # 仓库注册表（14.2）：Git 即权威源
 # 双重用途：
 #   1. 环境拓扑清单 —— setup-env.sh 按本表同步全部仓库
@@ -64,6 +64,15 @@ repos:
     api_type: GITHUB
     default_branch: dev
     executor_allowed: false
+
+  - repo_key: control-dsh-plugin
+    name: DSH 集成插件（control×DSH 桥：control-api 工具 + 文档）
+    path: control-dsh-plugin       # 顶级目录（gitdir 集中 ~/.repos/control-dsh-plugin.git）
+    git_url: git@github.com:obtstar/control-dsh-plugin.git
+    api_type: GITHUB
+    default_branch: dev
+    executor_allowed: false        # 平台组件，不走 wt 调度
+    disabled: false
 
   # 业务仓库按同 schema 登记（示例）：
   # - repo_key: billing-core
