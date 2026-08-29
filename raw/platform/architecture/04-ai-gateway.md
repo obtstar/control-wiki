@@ -1,14 +1,20 @@
-<!-- kb-mirror: upstream=control-center/docs/architecture/04-ai-gateway.md sha256=25ea3e08b33fea9f37358634574d22f91b67485929ee98053ab975fd1490a9a2 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-synced-at: 2026-08-19T21:58:57+08:00 -->
+<!-- kb-mirror: upstream=control-center/docs/architecture/04-ai-gateway.md sha256=675e1026732a35e1d093ab0b405c7c179a72c3bba8aefa51e48079a0ed780150 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+synced-at: 2026-08-29T21:00:36+08:00 -->
 
 ---
-status: 设计中
-last_verified: 2026-08-11
+status: 已废弃
+last_verified: 2026-08-29
 ---
 
-# 04 AI 网关层（L3）：企业内 LiteLLM 代理
+# 04 AI 网关层（L3）：企业内 LiteLLM 代理（已废弃）
 
-## 现状
+> **废弃声明（TASK-000011，2026-08-29 人裁决）**：LiteLLM 网关已砍除。
+> C1 执行层迁移后模型接入全走 **DSH（dsh-llm）统一出口**（TASK-004：control-api
+> 的 llm 配置段与 pi 执行器已退役）；PieKBS 内置 distill 的模型通道由
+> `wiki-distill` 技能替代（TASK-005）。LiteLLM 网关长期不可达（FINDING-017），
+> 砍除后解除外部阻塞。下文为历史设计（企业内代理方案），保留作参考，不再实施。
+
+## 现状（历史）
 
 企业内已搭建并**启动** LiteLLM 代理，接入两条上游：
 - **Anthropic**：`api.anthropic.com`（Claude 系列）

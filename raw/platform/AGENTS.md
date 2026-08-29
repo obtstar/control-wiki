@@ -1,5 +1,5 @@
-<!-- kb-mirror: upstream=AGENTS.md sha256=67f7cd6a9e1d04b8880803527ea2bc43dcce5f562434b0ff2e38583c167615d4 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-synced-at: 2026-08-19T21:58:57+08:00 -->
+<!-- kb-mirror: upstream=AGENTS.md sha256=745388165fa8fd0f1dc208c45d4419f44a43a43264566a3744364298365ceb1e （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+synced-at: 2026-08-29T21:00:37+08:00 -->
 
 # Agent 项目指南
 
@@ -16,7 +16,7 @@ synced-at: 2026-08-19T21:58:57+08:00 -->
 - **AI 驱动执行，用户逐步审批**：流水线每阶段一道审批闸，用户保留最终合并权。
 - **权柄分级，有据可依**：文档按 L1 需求 > L2 概要设计 > L3 详细设计 > L4 代码 分级；AI 只能顺行产出，不得逆行修改上级文档。
 - **Git 为唯一可信源**：代码、文档、编排配置、注册表均进 Git；Agent 工作区用 Git worktree 物理隔离。
-- **数据内网、AI 外接受控**：模型请求经 LiteLLM 网关统一出口，密钥集中在服务端。
+- **数据内网、AI 外接受控**：模型请求经 DSH 统一出口（LiteLLM 网关已砍除，TASK-000011），密钥集中在服务端。
 
 ### 1.1 平台六仓
 
@@ -94,7 +94,7 @@ synced-at: 2026-08-19T21:58:57+08:00 -->
 
 ### 2.3 外部服务
 
-- **LiteLLM 网关**：模型统一出口，默认 `http://litellm.internal:4000`，配置在 `control-api.yaml` / `control.env`。
+- **模型出口（DSH）**：模型统一出口经 DSH（dsh-llm）；LiteLLM 网关已砍除（TASK-000011，2026-08-29），详见 04-ai-gateway.md 废弃声明。
 - **团队 Git 服务器**：业务仓托管、MR 评审、保护分支。
 - **GitHub (`obtstar`)**：平台六仓托管。
 
@@ -355,7 +355,7 @@ control-center/tasks/TASK-001/
 - **会话安全**：bcrypt 口令、32 字节随机 token、24h 过期；认证使用常量时间比较。
 - **暂停为最高运行时权限**：任何状态可触发，暂停期间禁止一切写操作（代码/wiki/远端），仅人可恢复。
 - **有据可依**：产出必须引用 KB 依据；无据输出 `NO_BASIS` 并停止。
-- **出网白名单**：模型请求只经 LiteLLM；代码/数据不出本机。
+- **出网白名单**：模型请求经 DSH 统一出口；代码/数据不出本机。
 
 ---
 
@@ -368,7 +368,7 @@ control-center/tasks/TASK-001/
 5. **方案 D-2 对账 loop 已通电**（2026-08-17，control-api 939875d + control-center 2d0bb9e）：`control-api reconcile` 按 `control-center/orchestration/reconcile/checks.yaml` 校验文档声明 vs 代码事实（后端/前端/数据库/注册表字段四项），CONFLICT 退出码 1、结论带依据出处；首跑 WARN（registry `path` 字段 14.2 未声明）已经人裁决 A 修订 14.2 补齐声明（FINDING-049，2026-08-18），当前四项全 PASS 零 WARN。文档改动后应跑一次 reconcile；新增机器可判对照项 → 扩展 checks.yaml。另注意：control-api `.gitignore` 的 `/control-api` 为锚定根目录写法（FINDING-047 教训：非锚定模式会误伤 `cmd/control-api/`）。
 6. **`control-piekbs/.gitignore` 中忽略了 `AGENTS.md` 和 `CLAUDE.md`**；本根目录 `AGENTS.md` 不会被该平台仓库的 Git 跟踪，如需纳入版本需单独处理。
 7. **grounding enforce 模式的恢复陷阱**（FINDING-031，2026-08-18）：`kb.grounding: enforce` 下若 KB 检索为空，任务会因 `NO_BASIS` 暂停；此时直接 Resume 会**重走 grounding 并立即再次暂停**。恢复途径：先把 `control-api.yaml` 的 grounding 切为 `warn`/`off`，或先补齐 KB 语料再 Resume。语义出处 `control-api/internal/engine/grounding.go`。
-8. **PieKBS 已 systemd 常驻，蒸馏待网关**（FINDING-017/050，2026-08-18）：`piekbs-mcp.service`（user 级，Restart=on-failure，已 `loginctl enable-linger dev` 开机/登出存活）托管 8766 端口，内嵌 watcher/追平/蒸馏工作池；**勿再 nohup 手动起 serve**（端口冲突且绕过重启策略）。`piekbs service install` 只装 piekbs-mcp——旧 indexer 单元的 `watch` 子命令不存在（FINDING-050，macOS launchd 侧同病未修）。当前 distill 未启用：`config.yaml` 的 `distill.token` 为空且网关 `litellm.internal` DNS 不可达。**网关恢复手册**：① `curl -m 3 http://litellm.internal:4000/health` 确认通；② 写 0600 env 文件（如 `~/.config/piekbs/env`，含 `PIEKBS_DISTILL_TOKEN=...`）+ `systemctl --user edit piekbs-mcp` 加 `EnvironmentFile=` 指向它（密钥不落 Git）；③ `systemctl --user restart piekbs-mcp`，启动追平自动蒸馏 raw/ 存量；④ 观察 `wiki/source-notes/` 出页、`piekbs status` 计数上涨；⑤ KB 有料后再把 control-api grounding 切 enforce（注意 §10-7 陷阱）。
+8. **LiteLLM 已砍除，蒸馏走 DSH wiki-distill 技能**（TASK-000011，2026-08-29 人裁决）：C1 迁移后模型经 DSH 统一出口（TASK-004），PieKBS 内置 distill 的模型通道由 `wiki-distill` 技能替代（TASK-005）。`piekbs-mcp.service`（user 级，Restart=on-failure，linger 启用）托管 8766 端口，内嵌 watcher/追平；**勿再 nohup 手动起 serve**。FINDING-017 已 wontfix（网关废弃解除外部阻塞）；旧"网关恢复手册"作废（config.yaml distill 段已移除、04 章废弃标注、scripts 残留已清）。蒸馏操作：DSH 会话加载 wiki-distill 技能执行（raw → wiki/source-notes/）。
 9. **raw/platform/ 是派生镜像区**（FINDING-051，2026-08-19）：权柄文档（架构/规约/契约/台账/编排/注册表/AGENTS.md）经 `control-center/scripts/kb-sync.sh` 镜像入 KB 供 FTS/grounding 检索；权威居所仍是各 Git 仓原文件，镜像首行带 `kb-mirror` 出处头（upstream+sha256），**勿手改镜像**；清单唯一来源 = checks.yaml `mirror_pairs`，`reconcile` 的 `kb-mirror-freshness` 盯漂移。上游文档改动后应重跑 kb-sync.sh（reconcile 会 WARN 提醒）。
 
 ---

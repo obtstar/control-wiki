@@ -1,5 +1,5 @@
-# kb-mirror: upstream=control-center/registry/repos.yaml sha256=aa2acb24188bd6e3384b8695ba38cd5491aef6bb47b794c086e3f4a632ab0bfc （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-# synced-at: 2026-08-21T09:14:55+08:00
+# kb-mirror: upstream=control-center/registry/repos.yaml sha256=e65e5ca04067776ee14ce15df355e9244e3afcbb41a7cb7320a57346faf469af （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-29T21:00:36+08:00
 # 仓库注册表（14.2）：Git 即权威源
 # 双重用途：
 #   1. 环境拓扑清单 —— setup-env.sh 按本表同步全部仓库
@@ -85,3 +85,14 @@ repos:
   #   max_worktrees: 3
   #   executor_allowed: true
   #   disabled: false
+
+  - repo_key: dialectic-top
+    name: dialectic.top 网站
+    path: wt/projects/dialectic.top/dev
+    git_url: git@github.com:dialectic-top/dialectic.top.git
+    api_type: GITHUB
+    token_ref: env:GIT_TOKEN
+    default_branch: main
+    max_worktrees: 3
+    executor_allowed: true
+    disabled: false

@@ -1,3 +1,4 @@
 index/
 *.log
 .DS_Store
+wiki/query_log_*.jsonl

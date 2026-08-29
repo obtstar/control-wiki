@@ -1,5 +1,5 @@
-<!-- kb-mirror: upstream=control-center/docs/architecture/README.md sha256=f09c02fa4bbe98ad69c9988e2adb39be375fb3011e5d1204a18729f0c1d93be4 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-synced-at: 2026-08-19T21:58:57+08:00 -->
+<!-- kb-mirror: upstream=control-center/docs/architecture/README.md sha256=fa359a45fbc2df1734bbc50774854c87241a5138e63ff3016fcbca24825f7e6e （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+synced-at: 2026-08-29T21:00:36+08:00 -->
 
 ---
 status: 已实现
@@ -33,6 +33,8 @@ last_verified: 2026-08-17
 | 15 | [服务器模块](15-server-module.md) | control-api 后端模块：Go 包结构、业务服务、路径布局、REST/集成 |
 | 16 | [Linux 权限管理](16-linux-permissions.md) | 单人权限模型：owner / agent 双用户隔离、出站白名单、执行节点权限 |
 | 17 | [客户端/服务端设计](17-client-server-design.md) | 单用户能力域 API；单工作台 Web 客户端 |
+| 18 | [权柄分级](18-authority.md) | L1 需求→L4 代码权柄模型、KB 检索与有据可依（18.3 grounding） |
+| 19 | [工作台形态决策](19-workbench-strategy.md) | 双线分工定位：control-web=审批唯一入口；插件=AI 执行面+只读投影（TASK-010 裁决） |
 
 ## 技术栈速览
 
