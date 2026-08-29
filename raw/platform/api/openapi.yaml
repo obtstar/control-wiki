@@ -1,5 +1,5 @@
-# kb-mirror: upstream=control-api/docs/api/openapi.yaml sha256=0bab1d8396dd083cdd3ebf6989c36bfd0ce8647d47e77afd4330d50ef191a153 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-# synced-at: 2026-08-21T01:08:33+08:00
+# kb-mirror: upstream=control-api/docs/api/openapi.yaml sha256=c648d1704c607397169304ac8f10071c34014c929117150e2385531fe807ebc2 （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+# synced-at: 2026-08-29T21:00:37+08:00
 openapi: 3.1.0
 info:
   title: control-api (control-web MVP subset)
@@ -76,7 +76,7 @@ paths:
       summary: 创建任务
       description: |
         创建任务 = 在 tasks/ 下落一份 task.md（文档即任务），初始状态 pending、stage 为空。
-        任务 ID 由后端按 TASK-%03d 递增分配。
+        任务 ID 由后端按 TASK-%06d 递增分配（存量 TASK-001~010 保持 3 位兼容解析）。
       requestBody:
         required: true
         content:
@@ -440,6 +440,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /events/stream:
+    get:
+      summary: SSE 任务事件流（TASK-007 实时通知）
+      description: |
+        服务端单向推送任务状态变更事件（SSE，text/event-stream）。
+        事件格式：event: task / data: {"task_id","action","ts"}。
+        前端（EventSource）收到任意事件后重拉权威列表（/api/tasks、/api/approvals/pending）。
+        EventSource 无法自定义 Authorization 头，鉴权走 query token（与 Bearer 同源会话校验，
+        本地单用户内网可接受，见 events.go）；心跳注释行每 15s 一条防代理断连。
+      parameters:
+        - name: token
+          in: query
+          required: true
+          description: 会话 token（登录返回；EventSource 无法带 Header 故走 query）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE 事件流（持续推送，连接保持）
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        '401':
+          description: token 无效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     BearerAuth:
@@ -494,7 +524,7 @@ components:
       properties:
         task_id:
           type: string
-          description: 任务 ID，如 TASK-001
+          description: 任务 ID，如 TASK-000011
         title:
           type: string
           description: 任务标题
@@ -561,7 +591,7 @@ components:
       properties:
         task_id:
           type: string
-          description: 分配的任务 ID，如 TASK-001
+          description: 分配的任务 ID，如 TASK-000011
         path:
           type: string
           description: 任务目录路径（task.md 所在目录）
@@ -712,7 +742,7 @@ components:
       properties:
         task_id:
           type: string
-          description: 任务 ID，如 TASK-001（必填）
+          description: 任务 ID，如 TASK-000011（必填）
         event:
           type: string
           enum: [merged]
@@ -742,7 +772,7 @@ components:
       properties:
         task_id:
           type: string
-          description: 任务 ID，如 TASK-003（必填）
+          description: 任务 ID，如 TASK-000013（必填）
         artifact:
           type: [string, "null"]
           description: 阶段产物说明（可选），如 "report-design.md"，记入 work_log detail

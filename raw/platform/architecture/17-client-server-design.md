@@ -1,5 +1,5 @@
-<!-- kb-mirror: upstream=control-center/docs/architecture/17-client-server-design.md sha256=4a086062d1b9010ad2b4f75058ffed782fb0df990d0c4d8b9db0332898dec30b （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
-synced-at: 2026-08-19T21:58:57+08:00 -->
+<!-- kb-mirror: upstream=control-center/docs/architecture/17-client-server-design.md sha256=7266b11d74fc9aa5a03a2f6998df99e45ebc815713e40209f974703698b71ebd （派生副本勿编辑；权威见 upstream，重生成: control-center/scripts/kb-sync.sh）
+synced-at: 2026-08-29T21:00:36+08:00 -->
 
 ---
 status: 部分实现（认证/任务/审批/审计/KB 已通；design/repos/tests/bugs 域为规划中）
@@ -64,3 +64,11 @@ control-web/src/
 | 数据层（SQLite） | **服务端** `~/data/control.db` | 客户端不直连数据库 |
 
 > 原则：**客户端 = 纯展示**（零业务逻辑、零数据直连），一切能力的服务端实现都部署在服务端进程；客户端只经内网 API 交互。
+
+## 17.4 control-dsh-plugin 投影客户端（TASK-010 裁决，2026-08-29）
+
+DSH GUI 内的 control 面板（`control-dsh-plugin` client 半区）是**第二种客户端形态**，受同一"客户端 = 纯展示"原则约束：
+
+- **定位**：AI 会话侧的**只读投影**（任务/审批/审计列表），帮助会话内快速查看任务状态；**不含审批操作**（M3 不做，见 [19 工作台形态决策](19-workbench-strategy.md)）
+- **数据通道**：浏览器经 DSH web 代理 `/control/dashboard/api/*` 透传 control-api（host 进程持 Bearer 凭据），**浏览器零凭据**——与 §17.3"客户端只经内网 API 交互"一致
+- **边界**：任何 client 半区改动不得引入凭据（token）进入浏览器端逻辑；审批动作只经 control-web（服务端角色路由 + work_log 审计）
